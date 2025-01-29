@@ -1,40 +1,68 @@
-import fs from 'fs/promises';
+import fs from 'node:fs/promises';
+import { v4 as uuidv4 } from 'uuid';
 
 class City {
-  id: string;
   name: string;
+  id: string;
 
-  constructor(id: string, name: string) {
-    this.id = id;
+  constructor(name: string, id: string) {
     this.name = name;
+    this.id = id;
   }
 }
 
 class HistoryService {
-  private async read(): Promise<City[]> {
-    const data = await fs.readFile('searchHistory.json', 'utf-8');
-    return JSON.parse(data) as City[];
+  private async read() {
+    return await fs.readFile('searchHistory.json', {
+      flag: 'a+', // Create the file if it doesn't exist
+      encoding: 'utf8',
+    });
   }
 
-  private async write(cities: City[]): Promise<void> {
-    await fs.writeFile('searchHistory.json', JSON.stringify(cities, null, 2), 'utf-8');
+  private async write(cities: City[]) {
+    return await fs.writeFile('searchHistory.json', JSON.stringify(cities, null, '\t'));
   }
 
-  async getCities(): Promise<City[]> {
-    return await this.read();
+  async getCities() {
+    return await this.read().then((cities) => {
+      let parsedCities: City[];
+
+      // If cities isn't an array or can't be turned into one, return an empty array
+      try {
+        parsedCities = [].concat(JSON.parse(cities));
+      } catch (err) {
+        parsedCities = [];
+      }
+
+      return parsedCities;
+    });
   }
 
-  async addCity(city: string): Promise<void> {
-    const cities = await this.read();
-    const newCity = new City(Date.now().toString(), city);
-    cities.push(newCity);
-    await this.write(cities);
+  async addCity(city: string) {
+    if (!city) {
+      throw new Error('City cannot be blank');
+    }
+
+    // Add a unique id to the city using the uuid package
+    const newCity: City = { name: city, id: uuidv4() };
+
+    // Get all cities, add the new city, write all the updated cities, return the new city
+    return await this.getCities()
+      .then((cities) => {
+        // Check if the city already exists
+        if (cities.find((index) => index.name === city)) {
+          return cities;
+        }
+        return [...cities, newCity];
+      })
+      .then((updatedCities) => this.write(updatedCities))
+      .then(() => newCity);
   }
 
-  async removeCity(id: string): Promise<void> {
-    const cities = await this.read();
-    const updatedCities = cities.filter(city => city.id !== id);
-    await this.write(updatedCities);
+  async removeCity(id: string) {
+    return await this.getCities()
+      .then((cities) => cities.filter((city) => city.id !== id)) // Filter out the city with the matching id
+      .then((filteredCities) => this.write(filteredCities)); // Write the updated list back to the file
   }
 }
 
