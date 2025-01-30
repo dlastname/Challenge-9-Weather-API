@@ -42,4 +42,4 @@ Access the code repository at:
 ## Deployment
 
 The application is deployed and available online at:  
-[Weather Dashboard Live](http://your-deployed-url.com)
+[Weather Dashboard Live](https://challenge-9-weather-api.onrender.com)
