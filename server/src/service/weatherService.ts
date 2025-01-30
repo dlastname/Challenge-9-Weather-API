@@ -47,7 +47,7 @@ class WeatherService {
 
   private apiKey?: string;
 
-  private city = "";
+  // private city = "";
 
   constructor() {
     this.baseURL = process.env.API_BASE_URL || "";
@@ -78,10 +78,10 @@ class WeatherService {
     const { name, lat, lon, country, state } = locationData[0];
     return { name, lat, lon, country, state };
   }
-  // TODO: Create buildGeocodeQuery method
-  private buildGeocodeQuery(city:string): string {
-    return `${this.baseURL}/geo/1.0/direct?q=${city}&limit=1&appid=${this.apiKey}`;
-  }
+  // // TODO: Create buildGeocodeQuery method
+  // private buildGeocodeQuery(city:string): string {
+  //   return `${this.baseURL}/geo/1.0/direct?q=${city}&limit=1&appid=${this.apiKey}`;
+  // }
   // TODO: Create buildWeatherQuery method
   private buildWeatherQuery(coordinates: Coordinates): string {
     const { lat, lon } = coordinates;
@@ -108,29 +108,41 @@ class WeatherService {
 
     return new Weather(
       city.name,
-      dayjs.unix(current.dt), // Convert timestamp to Dayjs object
-      current.main.temp, // Temperature in Fahrenheit
-      current.wind.speed, // Wind speed
-      current.main.humidity, // Humidity
-      current.weather[0].icon, // Weather icon code
-      current.weather[0].description // Weather description
+      
+      dayjs.unix(current.dt).format('M/D/YYYY'), // Convert timestamp to Dayjs object
+      current.main.temp,
+      current.wind.speed, 
+      current.main.humidity, 
+      current.weather[0].icon,
+      current.weather[0].description 
     );
   }
   // TODO: Complete buildForecastArray method
   private buildForecastArray(currentWeather: Weather, weatherData: any[]) {
-    const forecast = weatherData.map((data) => {
-      return new Weather(
-        currentWeather.city,
-        dayjs.unix(data.dt), // Convert timestamp to Dayjs object
-        data.main.temp, // Temperature in Fahrenheit
-        data.wind.speed, // Wind speed
-        data.main.humidity, // Humidity
-        data.weather[0].icon, // Weather icon code
-        data.weather[0].description // Weather description
-      );
+    // Use a map to store only one entry per day
+    const dailyForecast = new Map();
+  
+    weatherData.forEach((data) => {
+      const date = dayjs.unix(data.dt).format("YYYY-MM-DD");
+  
+      if (!dailyForecast.has(date)) {
+        // Store only the first entry per day
+        dailyForecast.set(
+          date,
+          new Weather(
+            currentWeather.city,
+            dayjs.unix(data.dt).format('M/D/YYYY'), 
+            data.main.temp, 
+            data.wind.speed, 
+            data.main.humidity,
+            data.weather[0].icon,
+            data.weather[0].description
+          )
+        );
+      }
     });
-
-    return [currentWeather, ...forecast]; // Include current weather in the forecast array
+  
+    return [currentWeather, ...Array.from(dailyForecast.values()).slice(0, 5)];
   }
 
   // TODO: Complete getWeatherForCity method
